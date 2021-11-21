@@ -65,7 +65,7 @@ class ReadableFile(File):
 class DynamicPage(File):
     def __init__(self, path: str):
         super().__init__(path)
-        with open('example.dp', 'r') as dp_file:
+        with open(self.path, 'r') as dp_file:
             self.content = dp_file.read()
 
     def render(self, user, params):
