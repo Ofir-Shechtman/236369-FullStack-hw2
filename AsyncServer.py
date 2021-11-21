@@ -28,7 +28,7 @@ async def readable_file(request):
 
 async def dynamic_page(request):
     fm = request.app['file_manager']
-    user = {'authenticated': True, 'username': 'user1'}
+    user = {'authenticated': True, 'username': 'user1'}  # TODO where should we take the context from?
     params = {'color': 'blue', 'number': '42'}
     try:
         file = await fm.get_dynamic_page(request.path)
@@ -37,7 +37,7 @@ async def dynamic_page(request):
         with open('404.html', 'r') as html:
             body = html.read().format(request.path)
         return web.Response(status=404, body=body, headers={'Content-Type': 'text/html'})
-    return web.FileResponse(path=rendered, headers={'Content-Type': 'text/html'})
+    return web.Response(status=200, body=rendered, headers={'Content-Type': 'text/html'})
 
 
 async def admin_post(request):
@@ -98,8 +98,8 @@ class MyApp(web.Application):
         self.on_startup.append(connect_db)
         self.on_cleanup.append(disconnect_db)
         self.router.add_get('/', index)
-        self.router.add_get('/{file_path:.+}', readable_file)
         self.router.add_get('/{file_path:.+}.dp', dynamic_page)
+        self.router.add_get('/{file_path:.+}', readable_file)
         self.router.add_post('/users', admin_post)
         self.router.add_delete('/users/{username:.+}', admin_delete)
 
