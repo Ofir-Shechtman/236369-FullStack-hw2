@@ -5,7 +5,7 @@ import abc
 class File(abc.ABC):
     def __init__(self, path: pathlib.Path):
         self.path = path[1:]#= pathlib.Path
-        self.mime_type = "text/plain"
+        self.mime_type = "image/jpeg"
 
 
 
@@ -22,5 +22,5 @@ class DynamicPage(File):
 
 class FileManager:
     @staticmethod
-    def get(path: str) -> File:
+    async def get(path: str) -> File:
         return ReadableFile(path)
