@@ -9,9 +9,14 @@ async def index(request):
 
 
 async def readable_file(request):
-    # TODO Create files folders and set MIME support
-    file = await FileManager.get(request.path)
-    return web.Response(path=file.path, headers={'Content-Type': file.mime_type})
+    fm = request.app['file_manager']
+    try:
+        file = await fm.get_readable_file(request.path)
+    except (PermissionError, FileNotFoundError):
+        with open('404.html', 'r') as html:
+            body = html.read().format(request.path)
+        return web.Response(status=404, body=body, headers={'Content-Type': 'text/html'})
+    return web.FileResponse(path=file.path, headers={'Content-Type': file.mime_type})
 
 
 async def dynamic_page(request):
@@ -63,6 +68,7 @@ async def connect_db(app):
     print("Connecting DB...")
     app['database'] = Users.Users()
     print(app['database'])
+    app['file_manager'] = FileManager()
 
 
 async def disconnect_db(app):
