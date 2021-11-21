@@ -20,8 +20,17 @@ async def readable_file(request):
 
 
 async def dynamic_page(request):
-    file = await FileManager.get(request.path)
-    return web.FileResponse(path=file.path, headers={'Content-Type': file.mime_type})
+    fm = request.app['file_manager']
+    user = {'authenticated': True, 'username': 'user1'}
+    params = {'color': 'blue', 'number': '42'}
+    try:
+        file = await fm.get_dynamic_page(request.path)
+        rendered = file.render(user=user, params=params)
+    except (PermissionError, FileNotFoundError):
+        with open('404.html', 'r') as html:
+            body = html.read().format(request.path)
+        return web.Response(status=404, body=body, headers={'Content-Type': 'text/html'})
+    return web.FileResponse(path=rendered, headers={'Content-Type': 'text/html'})
 
 
 async def admin_post(request):
