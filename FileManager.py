@@ -7,6 +7,10 @@ import json
 SENSITIVE_FILES = ['users.db', 'config.py']
 
 
+class BadExtension(BaseException):
+    pass
+
+
 class FileManager:
     def __init__(self):
         with open('mime.json', 'r') as mime_file:
@@ -14,6 +18,9 @@ class FileManager:
         self._mime = {d['extension']: d['mime-type'] for d in mime_list}
 
     def get_mime_type(self, extension):
+        mime_type = self._mime.get(extension)
+        if not mime_type:
+            raise BadExtension
         return self._mime[extension]
 
     async def get_readable_file(self, path):
