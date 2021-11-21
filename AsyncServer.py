@@ -1,11 +1,18 @@
 from aiohttp import web, BasicAuth
 import config
 import Users
-from FileManager import FileManager
+from FileManager import FileManager, BadExtension
 
 
 async def index(request):
     return web.Response(body='OK')
+
+
+class Error404(web.Response):
+    def __init__(self, path):
+        with open('404.html', 'r') as html:
+            body = html.read().format(path)
+        super().__init__(status=404, body=body, headers={'Content-Type': 'text/html'})
 
 
 async def readable_file(request):
@@ -13,9 +20,9 @@ async def readable_file(request):
     try:
         file = await fm.get_readable_file(request.path)
     except (PermissionError, FileNotFoundError):
-        with open('404.html', 'r') as html:
-            body = html.read().format(request.path)
-        return web.Response(status=404, body=body, headers={'Content-Type': 'text/html'})
+        return Error404(request.path)
+    except BadExtension:
+        return web.Response(status=400)  # TODO ask on piazza
     return web.FileResponse(path=file.path, headers={'Content-Type': file.mime_type})
 
 
