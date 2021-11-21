@@ -9,6 +9,10 @@ class User:
     password: str
 
 
+class IntegrityError(sqlite3.IntegrityError):
+    pass
+
+
 class Users:
     def __init__(self, auto_commit: bool = True, db_file: str = 'users.db'):
         self.__connection = sqlite3.connect(db_file)
@@ -35,13 +39,15 @@ class Users:
     def insert(self, *args):
         """insert(self, user: User)
            insert(self, username: str,password: str)"""
-        if len(args) == 1 and isinstance(args[0], User):
-            self.__cursor.execute("insert into Users(username,password) values (?, ?)",
-                                  (args[0].username, args[0].password))
-        elif len(args) == 2:
-            self.__cursor.execute("insert into Users(username,password) values (?, ?)", args)
-        else:
-            raise NotImplementedError()
+        try:
+            if len(args) == 1 and isinstance(args[0], User):
+                self.__cursor.execute("insert into Users(username,password) values (?, ?)", (args[0].username, args[0].password))
+            elif len(args) == 2:
+                self.__cursor.execute("insert into Users(username,password) values (?, ?)", args)
+            else:
+                raise NotImplementedError()
+        except sqlite3.IntegrityError as e:
+            raise IntegrityError(e)
 
     def delete(self, username: str) -> int:
         return self.__cursor.execute("delete from Users where username=?", (username,)).rowcount
