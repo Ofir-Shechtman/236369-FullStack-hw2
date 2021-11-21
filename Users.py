@@ -66,7 +66,7 @@ class Users:
         if not data:
             return ''
         s = 'Users:\n'
-        for u in self.select_all():
+        for u in data:
             s += str(u) + '\n'
         return s
 

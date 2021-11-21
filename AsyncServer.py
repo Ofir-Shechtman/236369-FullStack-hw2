@@ -1,21 +1,23 @@
 from aiohttp import web, BasicAuth
 import config
 import Users
-
+from FileManager import FileManager
 
 async def readable_file(request):
-    return web.FileResponse(status=200, path='text.txt',
-                            headers={'Content-Type': "text/plain"})
+    # TODO Create files folders and set MIME support
+    file = FileManager.get(request.path)
+    return web.FileResponse(status=200, path=file.path,
+                            headers={'Content-Type': file.mime_type})
 
 
 @web.middleware
-async def middleware(request, handler):
+async def authorization(request, handler):
     auth_header = request.headers.get('Authorization')
     if auth_header:
         auth = BasicAuth.decode(auth_header)
         print(auth)
-        user = app['database'].select(auth.login)
-        print(user)
+        # TODO admin check for post&delete
+        user = request.app['database'].select(auth.login)
         if user and user.password == auth.password:
             print(f'{auth.login} is Authorized')
             return await handler(request)
@@ -34,9 +36,13 @@ async def disconnect_db(app):
     print("DB closed")
 
 
+class MyApp(web.Application):
+    def __init__(self):
+        super().__init__(middlewares=[authorization])
+        self.on_startup.append(connect_db)
+        self.on_cleanup.append(disconnect_db)
+        self.router.add_get('/folder/text.txt', readable_file)
+
 if __name__ == '__main__':
-    app = web.Application(middlewares=[middleware])
-    app.on_startup.append(connect_db)
-    app.on_cleanup.append(disconnect_db)
-    app.router.add_get('/', readable_file)
+    app = MyApp()
     web.run_app(app, host="localhost", port=config.port, shutdown_timeout=config.timeout)
