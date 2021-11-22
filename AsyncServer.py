@@ -5,6 +5,8 @@ from FileManager import FileManager, BadExtension, EvalFailed
 
 
 async def index(request):
+    if not request['user']['authenticated']:
+        return Error401()
     return web.Response(body='OK')
 
 
@@ -40,10 +42,6 @@ async def dynamic_page(request):
         rendered = file.render(user=request['user'], params=request.query)
     except (PermissionError, FileNotFoundError):
         return Error404(request.path)
-    return web.Response(body=rendered, headers={'Content-Type': 'text/html'})
-        with open('404.html', 'r') as html:
-            body = html.read().format(request.path)
-        return web.Response(status=404, body=body, headers={'Content-Type': 'text/html'})
     except EvalFailed:
         return web.Response(status=500)
     return web.Response(status=200, body=rendered, headers={'Content-Type': 'text/html'})
