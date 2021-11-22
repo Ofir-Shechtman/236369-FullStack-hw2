@@ -1,7 +1,7 @@
 from aiohttp import web, BasicAuth
 import config
 import Users
-from FileManager import FileManager, BadExtension
+from FileManager import FileManager, BadExtension, EvalFailed
 
 
 async def index(request):
@@ -15,7 +15,14 @@ class Error404(web.Response):
         super().__init__(status=404, body=body, headers={'Content-Type': 'text/html'})
 
 
+class Error401(web.Response):
+    def __init__(self):
+        super().__init__(status=401, headers={"WWW-Authenticate": 'Basic realm="hw2-realm"'})
+
+
 async def readable_file(request):
+    if not request['user']['authenticated']:
+        return Error401()
     fm = request.app['file_manager']
     try:
         file = await fm.get_readable_file(request.path)
@@ -28,17 +35,23 @@ async def readable_file(request):
 
 async def dynamic_page(request):
     fm = request.app['file_manager']
-    user = {'authenticated': True, 'username': 'user1'}  # TODO where should we take the context from?
-    params = {'color': 'blue', 'number': '42'}
     try:
         file = await fm.get_dynamic_page(request.path)
-        rendered = file.render(user=user, params=params)
+        rendered = file.render(user=request['user'], params=request.query)
     except (PermissionError, FileNotFoundError):
         return Error404(request.path)
     return web.Response(body=rendered, headers={'Content-Type': 'text/html'})
+        with open('404.html', 'r') as html:
+            body = html.read().format(request.path)
+        return web.Response(status=404, body=body, headers={'Content-Type': 'text/html'})
+    except EvalFailed:
+        return web.Response(status=500)
+    return web.Response(status=200, body=rendered, headers={'Content-Type': 'text/html'})
 
 
 async def admin_post(request):
+    if not request['is_admin']:
+        return Error401()
     print("POST")
     post_line = await request.content.readline()
     post_line = post_line.decode('latin-1')
@@ -53,6 +66,8 @@ async def admin_post(request):
 
 
 async def admin_delete(request):
+    if not request['is_admin']:
+        return Error401()
     print("DELETE")
     rowcount = request.app['database'].delete(request.match_info['username'])
     request.app['database'].commit()
@@ -65,20 +80,30 @@ async def admin_delete(request):
 
 @web.middleware
 async def authorization(request, handler):
+    request['user'] = {'authenticated': False, 'username': None}
+    request['is_admin'] = False
     auth_header = request.headers.get('Authorization')
     if auth_header:
-        auth = BasicAuth.decode(auth_header)
-        print(auth)
-        if auth.login == config.admin.get('username') and auth.password == config.admin.get('password'):
-            print(f'Admin login')
+        try:
+            auth = BasicAuth.decode(auth_header)
+            request['user']['username'] = auth.login
+            print(auth)
+        except Exception: # TODO: Check
             return await handler(request)
-        elif request.method == "GET":
-            user = request.app['database'].select(auth.login)
-            if user and user.password == auth.password:
+        admin_good_login = auth.login == config.admin.get('username')
+        admin_good_password = auth.password == config.admin.get('password')
+        request['is_admin'] = admin_good_login and admin_good_password
+        if request['is_admin']:
+            request['user']['authenticated'] = True
+            print(f'Admin login')
+        else:
+            selected_user = request.app['database'].select(auth.login)
+            request['user']['authenticated'] = (selected_user and selected_user.password == auth.password)
+            if request['user']['authenticated']:
                 print(f'{auth.login} is Authorized')
-                return await handler(request)
-    response = web.Response(status=401, headers={"WWW-Authenticate": 'Basic realm="hw2-realm"'})
-    return response
+    return await handler(request)
+    # response = web.Response(status=401, headers={"WWW-Authenticate": 'Basic realm="hw2-realm"'})
+    # return response
 
 
 async def connect_db(app):
