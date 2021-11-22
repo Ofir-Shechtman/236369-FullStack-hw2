@@ -34,10 +34,8 @@ async def dynamic_page(request):
         file = await fm.get_dynamic_page(request.path)
         rendered = file.render(user=user, params=params)
     except (PermissionError, FileNotFoundError):
-        with open('404.html', 'r') as html:
-            body = html.read().format(request.path)
-        return web.Response(status=404, body=body, headers={'Content-Type': 'text/html'})
-    return web.Response(status=200, body=rendered, headers={'Content-Type': 'text/html'})
+        return Error404(request.path)
+    return web.Response(body=rendered, headers={'Content-Type': 'text/html'})
 
 
 async def admin_post(request):
@@ -50,7 +48,7 @@ async def admin_post(request):
         request.app['database'].insert(user)
         request.app['database'].commit()
     except Users.IntegrityError as e:
-        print(e)
+        return web.Response(status=400)
     return web.Response(body='OK')
 
 
@@ -59,7 +57,10 @@ async def admin_delete(request):
     rowcount = request.app['database'].delete(request.match_info['username'])
     request.app['database'].commit()
     print(f'{rowcount} deleted')
-    return web.Response(body='OK')
+    if rowcount:
+        return web.Response(body='OK')
+    else:
+        return web.Response(status=400)
 
 
 @web.middleware
@@ -99,7 +100,7 @@ class MyApp(web.Application):
         self.on_cleanup.append(disconnect_db)
         self.router.add_get('/', index)
         self.router.add_get('/{file_path:.+}.dp', dynamic_page)
-        self.router.add_get('/{file_path:.+}', readable_file)
+        self.router.add_get('/{file_path:.+}.{ext:.+}', readable_file)
         self.router.add_post('/users', admin_post)
         self.router.add_delete('/users/{username:.+}', admin_delete)
 
