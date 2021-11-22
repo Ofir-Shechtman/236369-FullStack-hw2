@@ -12,6 +12,9 @@ PATTERN = '{%(.*)%}'
 class BadExtension(BaseException):
     pass
 
+class EvalFailed(BaseException):
+    pass
+
 
 class FileManager:
     def __init__(self):
@@ -74,8 +77,9 @@ class DynamicPage(File):
             re_obj = re.search(PATTERN, rendered_content)
             substring = re_obj.group(1)
             indexes = re_obj.regs[0]
-            evaluated = ''
-            if substring:
+            try:
                 evaluated = eval(substring)
+            except Exception:
+                raise EvalFailed
             rendered_content = rendered_content[:indexes[0]] + evaluated + rendered_content[indexes[1]:]
         return rendered_content
