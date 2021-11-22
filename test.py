@@ -20,14 +20,14 @@ async def test_unauthorized_get(cli):
 
 async def test_unauthorized_post(cli):
     resp = await cli.post('/users', data={"username": "unauthorized_post", "password": "1234"})
-    assert resp.status == 401
+    assert resp.status == 403
     with Users.Users() as users:
         assert not users.select('unauthorized_post')
 
 
 async def test_unauthorized_delete(cli):
     resp = await cli.delete('/users/admin')
-    assert resp.status == 401
+    assert resp.status == 403
     with Users.Users() as users:
         assert users.select('admin')
 
@@ -68,13 +68,12 @@ async def test_concurrency_test(aiohttp_client):
 
     async def sleep(request):
         await asyncio.sleep(1)
-        print('sleeping...')
+        # print('sleeping...')
         return web.Response(body='OK')
 
     app.router.add_get('/sleep', sleep)
     client = await aiohttp_client(app)
     url = "//" + client.host + ':' + str(client.port) + '/sleep'
-    print(url)
     tasks = [client.session.get(url, auth=BasicAuth(login='Ofir', password='1234')) for _ in range(100)]
     responses = await asyncio.gather(*tasks)
     for resp in responses:
