@@ -1,7 +1,7 @@
 import pytest
 from AsyncServer import MyApp
 from pytest_aiohttp import aiohttp_client, TestClient
-from aiohttp import BasicAuth
+from aiohttp import BasicAuth, web
 import asyncio
 import Users
 import os
@@ -20,14 +20,14 @@ async def test_unauthorized_get(cli):
 
 async def test_unauthorized_post(cli):
     resp = await cli.post('/users', data={"username": "unauthorized_post", "password": "1234"})
-    assert resp.status == 401
+    assert resp.status == 403
     with Users.Users() as users:
         assert not users.select('unauthorized_post')
 
 
 async def test_unauthorized_delete(cli):
     resp = await cli.delete('/users/admin')
-    assert resp.status == 401
+    assert resp.status == 403
     with Users.Users() as users:
         assert users.select('admin')
 
@@ -55,6 +55,7 @@ async def test_admin_delete(cli):
     with Users.Users() as users:
         assert not users.select('user1')
 
+
 async def test_image(cli):
     for file in os.listdir('Thailand'):
         resp = await cli.get(f'/Thailand/{file}', auth=BasicAuth(login='Ofir', password='1234'))
@@ -62,12 +63,21 @@ async def test_image(cli):
         assert int(resp.headers['Content-Length']) > 10000
 
 
-# async def test(aiohttp_client):
-#     app = MyApp()
-#     client = await aiohttp_client(app)
-#     async with client.session.get(app.host+'/', auth=BasicAuth(login='Ofir', password='1234')) as resp:
-#         assert resp.status == 200
+async def test_concurrency_test(aiohttp_client):
+    app = MyApp()
 
+    async def sleep(request):
+        await asyncio.sleep(1)
+        # print('sleeping...')
+        return web.Response(body='OK')
+
+    app.router.add_get('/sleep', sleep)
+    client = await aiohttp_client(app)
+    url = "//" + client.host + ':' + str(client.port) + '/sleep'
+    tasks = [client.session.get(url, auth=BasicAuth(login='Ofir', password='1234')) for _ in range(100)]
+    responses = await asyncio.gather(*tasks)
+    for resp in responses:
+        assert resp.status == 200
 
 # async def test_set_value(cli):
 #     resp = await cli.post('/', data={'value': 'foo'})
