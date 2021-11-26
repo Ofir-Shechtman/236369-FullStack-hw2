@@ -5,6 +5,9 @@
 <p> {% 'Hi ' + user['username'] if user['authenticated'] else "Please authenticate so we'll know your name" %} </p>
 {% "<p>We know that your name is {username}</p>".format(username=user['username']) if user['authenticated'] else '' %}
 <p>{% params['color'] %}</p>
+<p>{%
+'hi
+ofir'%}</p>
 </body>
 </html>
 

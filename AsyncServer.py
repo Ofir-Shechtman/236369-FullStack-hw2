@@ -24,8 +24,6 @@ class Error403(web.Response):
 
 
 async def readable_file(request):
-    # if not request['user']['authenticated']:
-    #     return Error401()
     try:
         file = await FileManager().get_readable_file(request.path)
     except FileNotFoundError:
@@ -43,26 +41,25 @@ async def dynamic_page(request):
         return Error404(request.path)
     except PermissionError:
         return Error403()
-    except EvalFailed:
-        return web.Response(status=500)
     return web.Response(body=rendered, headers={'Content-Type': 'text/html'})
 
 
 async def admin_post(request):
     if not request['is_admin']:
-        return Error403()
+        return Error401()
     try:
         post_line = await request.content.readline()
         post_line = post_line.decode('latin-1')
-        user_param = dict(parse.parse_qsl(post_line))
+        user_param = dict(parse.parse_qs(post_line))
         username, password = user_param['username'], user_param['password']
-        user = Users.User(username, password)
-    except Exception as e:
+        if len(username) > 1 or len(password) > 1:
+            raise Exception
+        user = Users.User(*username, *password)
+    except:
         return web.Response(status=400)
     try:
         with Users.Users() as users:
             users.insert(user)
-            users.commit()
     except Users.IntegrityError:
         return web.Response(status=409)
     return web.Response(body='OK')
@@ -70,15 +67,12 @@ async def admin_post(request):
 
 async def admin_delete(request):
     if not request['is_admin']:
-        return Error403()
-    # print("DELETE")
+        return Error401()
     with Users.Users() as users:
         username = request.rel_url.raw_name
         rowcount = users.delete(username)
-        users.commit()
-    # print(f'{rowcount} deleted')
     if rowcount:
-        return web.Response(body='OK')
+        return web.Response()
     else:
         return web.Response(status=400)
 
@@ -91,7 +85,7 @@ async def authorization(request, handler):
         try:
             auth = BasicAuth.decode(auth_header)
         except ValueError:
-            return Error401()
+            return web.Response(status=400)
         request['user']['username'] = auth.login
         admin_good_login = auth.login == config.admin.get('username')
         admin_good_password = auth.password == config.admin.get('password')
@@ -116,8 +110,11 @@ async def router(request):
     elif request.method == 'DELETE' and request.path.startswith('/users/'):
         req_handler = admin_delete
     else:
-        return Error404(request.path)
-    return await authorization(request, req_handler)
+        return web.Response(status=501)
+    try:
+        return await authorization(request, req_handler)
+    except:
+        return web.Response(status=500)
 
 
 async def main():
@@ -136,7 +133,6 @@ async def main():
 
 if __name__ == '__main__':
     loop = asyncio.get_event_loop()
-
     try:
         loop.run_until_complete(main())
     except KeyboardInterrupt:

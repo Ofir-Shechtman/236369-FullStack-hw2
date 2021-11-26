@@ -76,9 +76,9 @@ class DynamicPage(File):
 
     def render(self, user, params):
         rendered_content = self.content
-        while re.search(PATTERN, rendered_content):
-            re_obj = re.search(PATTERN, rendered_content)
-            substring = re_obj.group(1)
+        while re.search(PATTERN, rendered_content, flags=re.DOTALL):
+            re_obj = re.search(PATTERN, rendered_content, flags=re.DOTALL)
+            substring = re_obj.group(1).replace('\n', '')
             indexes = re_obj.regs[0]
             try:
                 evaluated = eval(substring, {'user': user, 'params': params})

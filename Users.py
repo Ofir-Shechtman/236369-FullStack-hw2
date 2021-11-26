@@ -14,14 +14,11 @@ class IntegrityError(sqlite3.IntegrityError):
 
 
 class Users:
-    def __init__(self, auto_commit: bool = True, db_file: str = 'users.db'):
-        self.__connection = sqlite3.connect(db_file)
+    def __init__(self, db_file: str = 'users.db'):
+        self.__connection = sqlite3.connect(db_file, isolation_level=None)
         self.__cursor = self.__connection.cursor()
-        self.__auto_commit = auto_commit
 
     def close(self):
-        if self.__auto_commit:
-            self.commit()
         self.__connection.close()
 
     def __enter__(self):
@@ -30,18 +27,13 @@ class Users:
     def __exit__(self, type, value, traceback):
         self.close()
 
-    def commit(self):
-        self.__connection.commit()
-
-    def rollback(self):
-        self.__connection.rollback()
-
     def insert(self, *args):
         """insert(self, user: User)
            insert(self, username: str,password: str)"""
         try:
             if len(args) == 1 and isinstance(args[0], User):
-                self.__cursor.execute("insert into Users(username,password) values (?, ?)", (args[0].username, args[0].password))
+                self.__cursor.execute("insert into Users(username,password) values (?, ?)",
+                                      (args[0].username, args[0].password))
             elif len(args) == 2:
                 self.__cursor.execute("insert into Users(username,password) values (?, ?)", args)
             else:
@@ -84,4 +76,3 @@ if __name__ == '__main__':
         users.insert('Ofir', '1234')
         users.insert(User('admin', '0000'))
         print(users)
-        users.rollback()
