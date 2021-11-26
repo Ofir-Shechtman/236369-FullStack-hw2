@@ -4,6 +4,8 @@ from abc import ABC
 from typing import Callable
 import json
 import re
+import asyncio
+
 
 SENSITIVE_FILES = ['users.db', 'config.py']
 PATTERN = '{%(.*)%}'
