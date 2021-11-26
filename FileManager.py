@@ -6,7 +6,7 @@ import json
 import re
 
 SENSITIVE_FILES = ['users.db', 'config.py']
-PATTERN = '{%(.*)%}'
+PATTERN = '{%(.*?)%}'
 
 
 class EvalFailed(BaseException):
@@ -76,8 +76,7 @@ class DynamicPage(File):
 
     def render(self, user, params):
         rendered_content = self.content
-        while re.search(PATTERN, rendered_content):
-            re_obj = re.search(PATTERN, rendered_content)
+        while re_obj:= re.search(PATTERN, rendered_content):
             substring = re_obj.group(1)
             indexes = re_obj.regs[0]
             try:
