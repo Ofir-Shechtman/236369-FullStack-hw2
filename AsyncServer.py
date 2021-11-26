@@ -28,8 +28,6 @@ async def readable_file(request):
         file = await fm.get_readable_file(request.path)
     except (PermissionError, FileNotFoundError):
         return Error404(request.path)
-    except BadExtension:
-        return web.Response(status=400)  # TODO ask on piazza
     return web.FileResponse(path=file.path, headers={'Content-Type': file.mime_type})
 
 
@@ -97,8 +95,6 @@ async def authorization(request, handler):
             if request['user']['authenticated']:
                 print(f'{auth.login} is Authorized')
     return await handler(request)
-    # response = web.Response(status=401, headers={"WWW-Authenticate": 'Basic realm="hw2-realm"'})
-    # return response
 
 
 async def connect_db(app):
