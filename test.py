@@ -1,20 +1,20 @@
 import pytest
-from AsyncServer import MyApp
-from pytest_aiohttp import aiohttp_client, TestClient
+from pytest_aiohttp import aiohttp_client,  RawTestServer
 from aiohttp import BasicAuth, web
 import asyncio
 import Users
 import os
+from AsyncServer import router
 
 
 @pytest.fixture
 def cli(loop, aiohttp_client):
-    app = MyApp()
-    return loop.run_until_complete(aiohttp_client(app))
+    server = RawTestServer(router)
+    return loop.run_until_complete(aiohttp_client(server))
 
 
 async def test_unauthorized_get(cli):
-    resp = await cli.get('/')
+    resp = await cli.get('/test.py')
     assert resp.status == 401
 
 
@@ -33,7 +33,7 @@ async def test_unauthorized_delete(cli):
 
 
 async def test_authorized_get(cli):
-    resp = await cli.get('/', auth=BasicAuth(login='Ofir', password='1234'))
+    resp = await cli.get('/test.py', auth=BasicAuth(login='Ofir', password='1234'))
     assert resp.status == 200
 
 

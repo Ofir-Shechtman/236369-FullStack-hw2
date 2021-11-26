@@ -6,13 +6,13 @@ import json
 import re
 import asyncio
 
-
 SENSITIVE_FILES = ['users.db', 'config.py']
 PATTERN = '{%(.*)%}'
 
 
 class BadExtension(BaseException):
     pass
+
 
 class EvalFailed(BaseException):
     pass
@@ -80,7 +80,7 @@ class DynamicPage(File):
             substring = re_obj.group(1)
             indexes = re_obj.regs[0]
             try:
-                evaluated = eval(substring)
+                evaluated = eval(substring, {"user": user, "params": params})
             except Exception:
                 raise EvalFailed
             rendered_content = rendered_content[:indexes[0]] + evaluated + rendered_content[indexes[1]:]
