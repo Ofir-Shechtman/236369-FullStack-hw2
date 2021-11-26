@@ -8,7 +8,7 @@ import asyncio
 
 
 SENSITIVE_FILES = ['users.db', 'config.py']
-PATTERN = '{%(.*)%}'
+PATTERN = '{%(.*?)%}'
 
 
 class BadExtension(BaseException):
