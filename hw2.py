@@ -57,6 +57,8 @@ async def admin_post(request):
         user = Users.User(*username, *password)
     except:
         return web.Response(status=400)
+    if user.username == request['user']['username']:
+        return web.Response(status=409)
     try:
         with Users.Users() as users:
             users.insert(user)
@@ -85,7 +87,7 @@ async def authorization(request, handler):
         try:
             auth = BasicAuth.decode(auth_header)
         except ValueError:
-            return web.Response(status=400)
+            return Error401()
         request['user']['username'] = auth.login
         admin_good_login = auth.login == config.admin.get('username')
         admin_good_password = auth.password == config.admin.get('password')

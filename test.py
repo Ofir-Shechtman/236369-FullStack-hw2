@@ -4,7 +4,7 @@ from aiohttp import BasicAuth, web
 import asyncio
 import Users
 import os
-from AsyncServer import router
+from hw2 import router
 
 
 @pytest.fixture
@@ -16,6 +16,11 @@ def cli(loop, aiohttp_client):
 async def test_unauthorized_get(cli):
     resp = await cli.get('/test.py')
     assert resp.status == 200
+
+
+async def test_bad_authorized_get(cli):
+    resp = await cli.get('/test.py', headers={'Authorization': "NonBasic Ofir 1234"})
+    assert resp.status == 401
 
 
 async def test_file_not_found(cli):
@@ -76,6 +81,14 @@ async def test_admin_post_integrity_error(cli):
         assert users.select('user1')
 
 
+async def test_admin_post_admin(cli):
+    resp = await cli.post('/users', auth=BasicAuth(login='admin', password='admin'),
+                          data={"username": "admin", "password": "1234"})
+    assert resp.status == 409
+    with Users.Users() as users:
+        assert not users.select('admin')
+
+
 async def test_admin_delete(cli):
     await cli.post('/users', auth=BasicAuth(login='admin', password='admin'),
                    data={"username": "user1", "password": "1234"})
@@ -98,6 +111,9 @@ async def test_dynamic_page(cli):
     resp = await cli.get('example.dp?color=blue&number=42', auth=BasicAuth(login='Ofir', password='1234'))
     assert resp.status == 200
     assert b"Ofir" in await resp.content.read()
+    resp = await cli.get('example.dp?color=blue&number=42', auth=BasicAuth(login='admin', password='admin'))
+    assert resp.status == 200
+    assert b"admin" in await resp.content.read()
     resp = await cli.get('example.dp?color=blue&number=42', auth=BasicAuth(login='Ofir', password='12345'))
     assert resp.status == 200
     assert b"Please authenticate so we\'ll know your name" in await resp.content.read()
@@ -150,4 +166,3 @@ async def test_concurrency_test_db_access(aiohttp_client):
     responses = await asyncio.gather(*tasks)
     for resp in responses:
         assert resp.status == 200
-
