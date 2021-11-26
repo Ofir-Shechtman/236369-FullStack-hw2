@@ -4,22 +4,25 @@ from abc import ABC
 from typing import Callable
 import json
 import re
-import asyncio
-
 
 SENSITIVE_FILES = ['users.db', 'config.py']
 PATTERN = '{%(.*)%}'
-
-
-class BadExtension(BaseException):
-    pass
 
 
 class EvalFailed(BaseException):
     pass
 
 
-class FileManager:
+class Singleton(type):
+    _instances = {}
+
+    def __call__(cls, *args, **kwargs):
+        if cls not in cls._instances:
+            cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
+        return cls._instances[cls]
+
+
+class FileManager(metaclass=Singleton):
     def __init__(self):
         with open('mime.json', 'r') as mime_file:
             mime_list = json.load(mime_file)['mime-mapping']

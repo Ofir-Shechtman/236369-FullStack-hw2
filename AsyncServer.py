@@ -1,7 +1,7 @@
 from aiohttp import web, BasicAuth
 import config
 import Users
-from FileManager import FileManager, BadExtension, EvalFailed
+from FileManager import FileManager, EvalFailed
 import asyncio
 from urllib import parse
 
@@ -27,7 +27,7 @@ async def readable_file(request):
     # if not request['user']['authenticated']:
     #     return Error401()
     try:
-        file = await file_manager.get_readable_file(request.path)
+        file = await FileManager().get_readable_file(request.path)
     except (PermissionError, FileNotFoundError):
         return Error404(request.path)
     return web.FileResponse(path=file.path, headers={'Content-Type': file.mime_type})
@@ -35,7 +35,7 @@ async def readable_file(request):
 
 async def dynamic_page(request):
     try:
-        file = await file_manager.get_dynamic_page(request.path)
+        file = await FileManager().get_dynamic_page(request.path)
         rendered = file.render(user=request['user'], params=request.query)
     except (PermissionError, FileNotFoundError):
         return Error404(request.path)
@@ -47,9 +47,14 @@ async def dynamic_page(request):
 async def admin_post(request):
     if not request['is_admin']:
         return Error403()
-    post_line = await request.content.readline()
-    post_line = post_line.decode('latin-1')
-    user = Users.User(*dict(parse.parse_qsl(post_line)))
+    try:
+        post_line = await request.content.readline()
+        post_line = post_line.decode('latin-1')
+        user_param = dict(parse.parse_qsl(post_line))
+        username, password = user_param['username'], user_param['password']
+        user = Users.User(username, password)
+    except Exception as e:
+        return web.Response(status=400)
     try:
         with Users.Users() as users:
             users.insert(user)
@@ -64,7 +69,8 @@ async def admin_delete(request):
         return Error403()
     # print("DELETE")
     with Users.Users() as users:
-        rowcount = users.delete(request.match_info['username'])
+        username = request.rel_url.raw_name
+        rowcount = users.delete(username)
         users.commit()
     # print(f'{rowcount} deleted')
     if rowcount:
@@ -125,7 +131,6 @@ async def main():
 
 
 if __name__ == '__main__':
-    file_manager = FileManager()
     loop = asyncio.get_event_loop()
 
     try:
