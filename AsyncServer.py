@@ -28,8 +28,10 @@ async def readable_file(request):
     #     return Error401()
     try:
         file = await FileManager().get_readable_file(request.path)
-    except (PermissionError, FileNotFoundError):
+    except FileNotFoundError:
         return Error404(request.path)
+    except PermissionError:
+        return Error403()
     return web.FileResponse(path=file.path, headers={'Content-Type': file.mime_type})
 
 
@@ -37,8 +39,10 @@ async def dynamic_page(request):
     try:
         file = await FileManager().get_dynamic_page(request.path)
         rendered = file.render(user=request['user'], params=request.query)
-    except (PermissionError, FileNotFoundError):
+    except FileNotFoundError:
         return Error404(request.path)
+    except PermissionError:
+        return Error403()
     except EvalFailed:
         return web.Response(status=500)
     return web.Response(body=rendered, headers={'Content-Type': 'text/html'})

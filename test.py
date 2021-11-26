@@ -76,6 +76,30 @@ async def test_image(cli):
         assert int(resp.headers['Content-Length']) > 10000
 
 
+async def test_dynamic_page(cli):
+    resp = await cli.get('example.dp', auth=BasicAuth(login='Ofir', password='1234'))
+    assert resp.status == 500
+    resp = await cli.get('example.dp?color=blue&number=42', auth=BasicAuth(login='Ofir', password='1234'))
+    assert resp.status == 200
+    resp = await cli.get('folder/example2.dp?color=blue&number=42', auth=BasicAuth(login='Ofir', password='1234'))
+    assert resp.status == 200
+    resp = await cli.get('example2.dp?color=blue&number=42', auth=BasicAuth(login='Ofir', password='1234'))
+    assert resp.status == 404
+    resp = await cli.get('empty.dp', auth=BasicAuth(login='Ofir', password='1234'))
+    assert resp.status == 200
+
+
+async def test_forbidden_page(cli):
+    resp = await cli.get('config.py', auth=BasicAuth(login='admin', password='admin'))
+    assert resp.status == 403
+    resp = await cli.get('config.py', auth=BasicAuth(login='Ofir', password='1234'))
+    assert resp.status == 403
+    resp = await cli.get('users.db', auth=BasicAuth(login='Ofir', password='1234'))
+    assert resp.status == 403
+    resp = await cli.get('mime.json', auth=BasicAuth(login='Ofir', password='1234'))
+    assert resp.status == 200
+
+
 @pytest.mark.timeout(2)
 async def test_concurrency_test(aiohttp_client):
     async def sleep(request):
