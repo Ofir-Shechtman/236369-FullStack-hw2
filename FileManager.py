@@ -6,6 +6,7 @@ import json
 import re
 import asyncio
 
+
 SENSITIVE_FILES = ['users.db', 'config.py']
 PATTERN = '{%(.*)%}'
 
@@ -25,10 +26,7 @@ class FileManager:
         self._mime = {d['extension']: d['mime-type'] for d in mime_list}
 
     def get_mime_type(self, extension):
-        mime_type = self._mime.get(extension)
-        if not mime_type:
-            raise BadExtension
-        return self._mime[extension]
+        return self._mime.get(extension, 'text/plain')
 
     async def get_readable_file(self, path):
         return ReadableFile(path, self.get_mime_type)
@@ -41,7 +39,7 @@ class FileManager:
 class File(ABC):
     def __init__(self, path: str):
         self._path = Path(path.strip('/'))
-        if not os.path.exists(self.path):
+        if not os.path.isfile(self.path):
             raise FileNotFoundError
         if self.is_sensitive():
             raise PermissionError
@@ -80,8 +78,8 @@ class DynamicPage(File):
             substring = re_obj.group(1)
             indexes = re_obj.regs[0]
             try:
-                evaluated = eval(substring, {"user": user, "params": params})
-            except Exception:
+                evaluated = eval(substring, {'user': user, 'params': params})
+            except Exception as e:
                 raise EvalFailed
             rendered_content = rendered_content[:indexes[0]] + evaluated + rendered_content[indexes[1]:]
         return rendered_content

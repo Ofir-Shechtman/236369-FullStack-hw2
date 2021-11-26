@@ -30,8 +30,6 @@ async def readable_file(request):
         file = await file_manager.get_readable_file(request.path)
     except (PermissionError, FileNotFoundError):
         return Error404(request.path)
-    except BadExtension:
-        return web.Response(status=400)  # TODO: ask on piazza
     return web.FileResponse(path=file.path, headers={'Content-Type': file.mime_type})
 
 
