@@ -71,7 +71,7 @@ async def admin_delete(request):
     if not request['is_admin']:
         return Error401()
     with Users.Users() as users:
-        username = request.rel_url.raw_name
+        username = request.path[len('/users/'):]
         rowcount = users.delete(username)
     if rowcount:
         return web.Response()

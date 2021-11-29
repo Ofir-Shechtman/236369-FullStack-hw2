@@ -5,6 +5,13 @@ import asyncio
 import Users
 import os
 from hw2 import router
+from config import admin as config_admin
+
+
+class AdminAuth(BasicAuth):
+    def __new__(cls):
+        return super().__new__(cls, login=config_admin['username'], password=config_admin['password'])
+
 
 
 @pytest.fixture
@@ -36,7 +43,7 @@ async def test_unauthorized_post(cli):
 
 
 async def test_unauthorized_delete(cli):
-    await cli.post('/users', auth=BasicAuth(login='admin', password='admin'),
+    await cli.post('/users', auth=AdminAuth(),
                    data={"username": "user1", "password": "1234"})
     resp = await cli.delete('/users/user1')
     assert resp.status == 401
@@ -54,17 +61,30 @@ async def test_multiget(cli):
 
 
 async def test_admin_post_new(cli):
-    await cli.delete('/users/user1', auth=BasicAuth(login='admin', password='admin'))
-    resp = await cli.post('/users', auth=BasicAuth(login='admin', password='admin'),
+    await cli.delete('/users/user1', auth=AdminAuth())
+    resp = await cli.post('/users', auth=AdminAuth(),
                           data={"username": "user1", "password": "1234"})
     assert resp.status == 200
     with Users.Users() as users:
         assert users.select('user1')
 
 
+async def test_admin_post_delete_gal(cli):
+    username = "//:"
+    await cli.delete(f'/users/{username}', auth=AdminAuth())
+    resp = await cli.post('/users', auth=AdminAuth(), data={"username": username, "password": "1234"})
+    assert resp.status == 200
+    with Users.Users() as users:
+        assert users.select(username)
+    await cli.delete(f'/users/{username}', auth=AdminAuth())
+    assert resp.status == 200
+    with Users.Users() as users:
+        assert not users.select(username)
+
+
 async def test_admin_post_nopass(cli):
-    await cli.delete('/users/user1', auth=BasicAuth(login='admin', password='admin'))
-    resp = await cli.post('/users', auth=BasicAuth(login='admin', password='admin'),
+    await cli.delete('/users/user1', auth=AdminAuth())
+    resp = await cli.post('/users', auth=AdminAuth(),
                           data={"username": "user1"})
     assert resp.status == 400
     with Users.Users() as users:
@@ -72,7 +92,7 @@ async def test_admin_post_nopass(cli):
 
 
 async def test_admin_post_integrity_error(cli):
-    await cli.post('/users', auth=BasicAuth(login='admin', password='admin'),
+    await cli.post('/users', auth=AdminAuth(),
                    data={"username": "user1", "password": "1234"})
     resp = await cli.post('/users', auth=BasicAuth(login='admin', password='admin'),
                           data={"username": "user1", "password": "1234"})
@@ -82,7 +102,7 @@ async def test_admin_post_integrity_error(cli):
 
 
 async def test_admin_post_admin(cli):
-    resp = await cli.post('/users', auth=BasicAuth(login='admin', password='admin'),
+    resp = await cli.post('/users', auth=AdminAuth(),
                           data={"username": "admin", "password": "1234"})
     assert resp.status == 409
     with Users.Users() as users:
@@ -90,9 +110,9 @@ async def test_admin_post_admin(cli):
 
 
 async def test_admin_delete(cli):
-    await cli.post('/users', auth=BasicAuth(login='admin', password='admin'),
+    await cli.post('/users', auth=AdminAuth(),
                    data={"username": "user1", "password": "1234"})
-    resp = await cli.delete('/users/user1', auth=BasicAuth(login='admin', password='admin'))
+    resp = await cli.delete('/users/user1', auth=AdminAuth())
     assert resp.status == 200
     with Users.Users() as users:
         assert not users.select('user1')
@@ -111,7 +131,7 @@ async def test_dynamic_page(cli):
     resp = await cli.get('example.dp?color=blue&number=42', auth=BasicAuth(login='Ofir', password='1234'))
     assert resp.status == 200
     assert b"Ofir" in await resp.content.read()
-    resp = await cli.get('example.dp?color=blue&number=42', auth=BasicAuth(login='admin', password='admin'))
+    resp = await cli.get('example.dp?color=blue&number=42', auth=AdminAuth())
     assert resp.status == 200
     assert b"admin" in await resp.content.read()
     resp = await cli.get('example.dp?color=blue&number=42', auth=BasicAuth(login='Ofir', password='12345'))
@@ -126,7 +146,7 @@ async def test_dynamic_page(cli):
 
 
 async def test_forbidden_page(cli):
-    resp = await cli.get('config.py', auth=BasicAuth(login='admin', password='admin'))
+    resp = await cli.get('config.py', auth=AdminAuth())
     assert resp.status == 403
     resp = await cli.get('config.py', auth=BasicAuth(login='Ofir', password='1234'))
     assert resp.status == 403
