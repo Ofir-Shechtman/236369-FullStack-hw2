@@ -106,7 +106,7 @@ async def router(request):
         if request.path.endswith('.dp'):
             req_handler = dynamic_page
         else:
-            req_handler = readable_file
+            return await readable_file(request)
     elif request.method == 'POST' and request.path == '/users':
         req_handler = admin_post
     elif request.method == 'DELETE' and request.path.startswith('/users/'):

@@ -27,8 +27,11 @@ async def test_unauthorized_get(cli):
 
 async def test_bad_authorized_get(cli):
     resp = await cli.get('/test.py', headers={'Authorization': "NonBasic Ofir 1234"})
-    assert resp.status == 401
+    assert resp.status == 200
 
+async def test_bad_authorized_get_dp(cli):
+    resp = await cli.get('/example.dp', headers={'Authorization': "NonBasic Ofir 1234"})
+    assert resp.status == 401
 
 async def test_file_not_found(cli):
     resp = await cli.get('/not_found.txt')
