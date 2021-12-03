@@ -54,7 +54,8 @@ async def admin_post(request):
         username, password = user_param['username'], user_param['password']
         if len(username) > 1 or len(password) > 1:
             raise Exception
-        user = Users.User(*username, *password)
+        username, password = parse.unquote(*username), parse.unquote(*password)
+        user = Users.User(username, password)
     except:
         return web.Response(status=400)
     if user.username == request['user']['username']:
@@ -71,8 +72,10 @@ async def admin_delete(request):
     if not request['is_admin']:
         return Error401()
     with Users.Users() as users:
-        username = request.path[len('/users/'):]
-        rowcount = users.delete(username)
+        username = request.path_qs[len("/Users/"):]
+        if '/' in username:
+            return web.Response(status=400)
+        rowcount = users.delete(parse.unquote(username))
     if rowcount:
         return web.Response()
     else:
